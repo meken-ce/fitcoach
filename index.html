@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0a">
+<title>FitCoach — Masa Başı Antrenörü</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --bg-card: #141414;
+    --bg-elev: #1c1c1c;
+    --border: #262626;
+    --text: #f5f5f0;
+    --text-dim: #a3a3a3;
+    --text-mute: #666;
+    --accent: #d4ff3a;        /* limon yeşili - vurgu */
+    --accent-warm: #ff7849;   /* turuncu - uyarı/kalori */
+    --accent-cool: #5eead4;   /* mint - protein */
+    --danger: #ef4444;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; overscroll-behavior: none; }
+  body { min-height: 100vh; padding-bottom: 90px; }
+
+  /* Background atmosphere */
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 80% 0%, rgba(212, 255, 58, 0.06), transparent 60%),
+      radial-gradient(ellipse 80% 50% at 0% 100%, rgba(255, 120, 73, 0.04), transparent 60%);
+  }
+
+  .wrap { max-width: 720px; margin: 0 auto; padding: 24px 18px; position: relative; z-index: 1; }
+
+  /* Header */
+  header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 28px; }
+  .logo { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
+  .logo span { color: var(--accent); }
+  .date-badge { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.1em; }
+
+  /* Tabs */
+  nav.tabs {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(10, 10, 10, 0.85); backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-around; padding: 10px 8px 22px;
+  }
+  .tab-btn {
+    background: none; border: none; color: var(--text-mute); padding: 8px 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    font-family: inherit; font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+    cursor: pointer; transition: color 0.2s;
+  }
+  .tab-btn svg { width: 22px; height: 22px; stroke-width: 1.8; }
+  .tab-btn.active { color: var(--accent); }
+
+  /* Pages */
+  .page { display: none; animation: fadeIn 0.3s ease; }
+  .page.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Cards */
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px; margin-bottom: 14px;
+  }
+  .card-title { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 12px; }
+
+  /* Calorie ring */
+  .ring-wrap { display: flex; align-items: center; gap: 20px; }
+  .ring { position: relative; width: 130px; height: 130px; flex-shrink: 0; }
+  .ring svg { transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 10; }
+  .ring .bg-track { stroke: var(--bg-elev); }
+  .ring .fg-track { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+  .ring-text {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .ring-num { font-family: 'Fraunces', serif; font-size: 30px; font-weight: 600; line-height: 1; }
+  .ring-lbl { font-size: 10px; color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+  .ring-info { flex: 1; }
+  .ring-info .row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px dashed var(--border); }
+  .ring-info .row:last-child { border-bottom: none; }
+  .ring-info .lbl { color: var(--text-dim); }
+  .ring-info .val { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+
+  /* Macros */
+  .macros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+  .macro {
+    background: var(--bg-elev); border-radius: 10px; padding: 12px; text-align: center;
+  }
+  .macro-name { font-size: 10px; color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.1em; }
+  .macro-val { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; margin-top: 4px; }
+  .macro-unit { font-size: 11px; color: var(--text-dim); }
+  .macro.protein .macro-val { color: var(--accent-cool); }
+  .macro.carb .macro-val { color: var(--accent); }
+  .macro.fat .macro-val { color: var(--accent-warm); }
+
+  /* Input area */
+  .meal-input {
+    display: flex; gap: 8px; margin-top: 14px;
+  }
+  .meal-input textarea {
+    flex: 1; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 12px;
+    color: var(--text); padding: 14px; font-family: inherit; font-size: 15px; resize: none;
+    min-height: 56px; transition: border-color 0.2s;
+  }
+  .meal-input textarea:focus { outline: none; border-color: var(--accent); }
+  .icon-btn {
+    background: var(--bg-elev); border: 1px solid var(--border); border-radius: 12px;
+    width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;
+    color: var(--text); cursor: pointer; flex-shrink: 0; transition: all 0.2s;
+  }
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .icon-btn.recording { background: var(--danger); color: white; border-color: var(--danger); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.6); } 50% { box-shadow: 0 0 0 12px rgba(239,68,68,0); } }
+  .icon-btn svg { width: 22px; height: 22px; stroke-width: 1.8; }
+
+  .btn-primary {
+    background: var(--accent); color: var(--bg); border: none; border-radius: 12px;
+    padding: 14px 18px; font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer; width: 100%; margin-top: 10px; letter-spacing: 0.02em;
+    transition: transform 0.15s, opacity 0.2s;
+  }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-secondary {
+    background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 16px; font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: border-color 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--accent); }
+
+  /* Meal list */
+  .meal-list { margin-top: 16px; }
+  .meal-item {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .meal-item:last-child { border-bottom: none; }
+  .meal-name { font-size: 14px; flex: 1; }
+  .meal-time { font-size: 10px; color: var(--text-mute); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+  .meal-cal { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 13px; color: var(--accent-warm); white-space: nowrap; }
+  .meal-del { background: none; border: none; color: var(--text-mute); cursor: pointer; padding: 4px; }
+  .meal-del:hover { color: var(--danger); }
+
+  /* Workout */
+  .workout-meta {
+    display: flex; gap: 18px; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+  }
+  .workout-meta div { flex: 1; }
+  .workout-meta .lbl { font-size: 10px; color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.1em; }
+  .workout-meta .val { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; margin-top: 2px; }
+  .workout-type-badge {
+    display: inline-block; background: var(--accent); color: var(--bg);
+    padding: 3px 10px; border-radius: 999px; font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+
+  .exercise {
+    background: var(--bg-elev); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .ex-icon {
+    width: 44px; height: 44px; flex-shrink: 0;
+    background: rgba(212, 255, 58, 0.06);
+    border: 1px solid rgba(212, 255, 58, 0.15);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent);
+  }
+  .ex-icon svg { width: 32px; height: 32px; }
+  .ex-num-inline {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-mute);
+    margin-right: 6px; letter-spacing: 0.05em;
+  }
+  .ex-body { flex: 1; min-width: 0; }
+  .ex-name { font-size: 14px; font-weight: 600; line-height: 1.3; }
+  .ex-detail { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .ex-yt {
+    width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px;
+    background: var(--bg-card); border: 1px solid var(--border); color: var(--text-dim);
+    display: flex; align-items: center; justify-content: center;
+    text-decoration: none; transition: all 0.2s;
+  }
+  .ex-yt:hover, .ex-yt:active { color: #ff4040; border-color: #ff4040; }
+  .ex-yt svg { width: 18px; height: 18px; }
+  .ex-check {
+    width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border);
+    background: transparent; cursor: pointer; flex-shrink: 0; transition: all 0.2s;
+  }
+  .ex-check.done { background: var(--accent); border-color: var(--accent); }
+
+  .section-divider { font-size: 10px; color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.15em; margin: 18px 0 10px; padding-left: 4px; }
+
+  /* History */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .stat {
+    background: var(--bg-elev); border-radius: 10px; padding: 14px;
+  }
+  .stat-lbl { font-size: 10px; color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.1em; }
+  .stat-val { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 600; margin-top: 4px; }
+  .stat-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+  .history-item {
+    display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .hist-date { font-family: 'JetBrains Mono', monospace; color: var(--text-dim); }
+
+  /* Settings */
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+  .field input, .field select {
+    width: 100%; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px;
+    color: var(--text); padding: 12px; font-family: inherit; font-size: 14px;
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+  .field-hint { font-size: 11px; color: var(--text-mute); margin-top: 4px; }
+
+  /* Suggestion box */
+  .suggestion {
+    background: linear-gradient(135deg, rgba(212,255,58,0.08), rgba(94,234,212,0.04));
+    border: 1px solid rgba(212,255,58,0.2);
+    border-radius: var(--radius); padding: 16px; margin-top: 14px;
+  }
+  .suggestion-title { font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; margin-bottom: 8px; }
+  .suggestion-text { font-size: 14px; line-height: 1.55; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%);
+    background: var(--bg-elev); border: 1px solid var(--border); color: var(--text);
+    padding: 12px 18px; border-radius: 12px; font-size: 13px; z-index: 200;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5); opacity: 0; pointer-events: none;
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-8px); }
+  .toast.error { border-color: var(--danger); }
+
+  /* Loading */
+  .spinner {
+    width: 16px; height: 16px; border: 2px solid var(--bg); border-top-color: transparent;
+    border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 30px 16px; color: var(--text-mute); font-size: 13px; }
+
+  /* Modal for API key */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(6px);
+    z-index: 300; display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    max-width: 420px; width: 100%; padding: 24px;
+  }
+  .modal h2 { font-family: 'Fraunces', serif; font-size: 22px; margin-bottom: 8px; }
+  .modal p { color: var(--text-dim); font-size: 13px; line-height: 1.5; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="logo">fit<span>·</span>coach</div>
+    <div class="date-badge" id="dateBadge"></div>
+  </header>
+
+  <!-- ============ TODAY (Beslenme + AI) ============ -->
+  <section class="page active" id="page-today">
+    <div class="card">
+      <div class="card-title">Günlük Hedef</div>
+      <div class="ring-wrap">
+        <div class="ring">
+          <svg width="130" height="130" viewBox="0 0 130 130">
+            <circle class="bg-track" cx="65" cy="65" r="56"></circle>
+            <circle class="fg-track" cx="65" cy="65" r="56" id="ringFg"
+              stroke-dasharray="351.86" stroke-dashoffset="351.86"></circle>
+          </svg>
+          <div class="ring-text">
+            <div class="ring-num" id="ringConsumed">0</div>
+            <div class="ring-lbl" id="ringRemaining">/ 2000 kcal</div>
+          </div>
+        </div>
+        <div class="ring-info">
+          <div class="row"><span class="lbl">Tüketilen</span><span class="val" id="infoConsumed">0 kcal</span></div>
+          <div class="row"><span class="lbl">Kalan</span><span class="val" id="infoRemaining">2000 kcal</span></div>
+          <div class="row"><span class="lbl">Öğün sayısı</span><span class="val" id="infoMeals">0</span></div>
+        </div>
+      </div>
+
+      <div class="macros">
+        <div class="macro protein">
+          <div class="macro-name">Protein</div>
+          <div class="macro-val" id="macroP">0<span class="macro-unit">g</span></div>
+        </div>
+        <div class="macro carb">
+          <div class="macro-name">Karb</div>
+          <div class="macro-val" id="macroC">0<span class="macro-unit">g</span></div>
+        </div>
+        <div class="macro fat">
+          <div class="macro-name">Yağ</div>
+          <div class="macro-val" id="macroF">0<span class="macro-unit">g</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Yemek Ekle</div>
+      <div class="meal-input">
+        <textarea id="mealText" placeholder="Örnek: Öğlen bir porsiyon mercimek çorbası, yarım ekmek ve tavuklu pilav yedim"></textarea>
+        <button class="icon-btn" id="micBtn" title="Sesli giriş">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </button>
+      </div>
+      <button class="btn-primary" id="analyzeMeal">Analiz Et & Ekle</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Bugünün Öğünleri</div>
+      <div class="meal-list" id="mealList">
+        <div class="empty">Henüz öğün eklenmedi.</div>
+      </div>
+    </div>
+
+    <div class="card" id="suggestCard" style="display:none">
+      <div class="card-title">Akşam Önerisi</div>
+      <div class="suggestion">
+        <div class="suggestion-title">◆ Kalanına göre</div>
+        <div class="suggestion-text" id="suggestText">—</div>
+      </div>
+      <button class="btn-secondary" id="getSuggestion" style="width:100%; margin-top:12px">Öneri Al</button>
+    </div>
+  </section>
+
+  <!-- ============ WORKOUT ============ -->
+  <section class="page" id="page-workout">
+    <div class="card">
+      <div class="workout-meta">
+        <div>
+          <div class="lbl">Bugünkü Tip</div>
+          <div class="val"><span class="workout-type-badge" id="wType">—</span></div>
+        </div>
+        <div>
+          <div class="lbl">Süre</div>
+          <div class="val" id="wDuration">20 dk</div>
+        </div>
+      </div>
+
+      <div class="section-divider">Postür Egzersizleri (5 dk)</div>
+      <div id="postureList"></div>
+
+      <div class="section-divider">Ana Antrenman</div>
+      <div id="mainList"></div>
+
+      <button class="btn-secondary" id="speakWorkout" style="width:100%; margin-top:12px">
+        <svg style="width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        Antrenmanı Sesli Oku
+      </button>
+      <button class="btn-primary" id="completeWorkout" style="margin-top:8px">Antrenmanı Tamamla</button>
+      <button class="btn-secondary" id="regenWorkout" style="width:100%; margin-top:8px">Yeni Program Üret</button>
+    </div>
+  </section>
+
+  <!-- ============ HISTORY ============ -->
+  <section class="page" id="page-history">
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="stat-lbl">Bu hafta</div>
+        <div class="stat-val" id="statWeek">0</div>
+        <div class="stat-sub">antrenman tamamlandı</div>
+      </div>
+      <div class="stat">
+        <div class="stat-lbl">Toplam</div>
+        <div class="stat-val" id="statTotal">0</div>
+        <div class="stat-sub">antrenman</div>
+      </div>
+      <div class="stat">
+        <div class="stat-lbl">Streak</div>
+        <div class="stat-val" id="statStreak">0</div>
+        <div class="stat-sub">gün üst üste</div>
+      </div>
+      <div class="stat">
+        <div class="stat-lbl">Ort. kalori</div>
+        <div class="stat-val" id="statAvgCal">0</div>
+        <div class="stat-sub">son 7 gün</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Son Antrenmanlar</div>
+      <div id="historyList">
+        <div class="empty">Henüz kayıt yok. İlk antrenmanını tamamla!</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section class="page" id="page-settings">
+    <div class="card">
+      <div class="card-title">Profil</div>
+      <div class="field">
+        <label>Günlük Kalori Hedefi</label>
+        <input type="number" id="setCal" placeholder="2000">
+        <div class="field-hint">Masa başı + hafif aktivite için ortalama 2000-2200 kcal</div>
+      </div>
+      <div class="field">
+        <label>Protein Hedefi (g)</label>
+        <input type="number" id="setP" placeholder="120">
+      </div>
+      <div class="field">
+        <label>Karb Hedefi (g)</label>
+        <input type="number" id="setC" placeholder="220">
+      </div>
+      <div class="field">
+        <label>Yağ Hedefi (g)</label>
+        <input type="number" id="setF" placeholder="65">
+      </div>
+      <button class="btn-primary" id="saveSettings">Kaydet</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">AI Bağlantısı (Ücretsiz)</div>
+      <div class="field">
+        <label>Google Gemini API Anahtarı</label>
+        <input type="password" id="setApiKey" placeholder="AIza...">
+        <div class="field-hint">aistudio.google.com → "Get API key" → kredi kartı gerekmez. Günde 1000 istek ücretsiz.</div>
+      </div>
+      <button class="btn-primary" id="saveApi">Anahtarı Kaydet</button>
+      <button class="btn-secondary" id="testApi" style="width:100%; margin-top:8px">Test Et</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Veri Yönetimi</div>
+      <button class="btn-secondary" id="exportData" style="width:100%; margin-bottom:8px">Verileri Dışa Aktar (JSON)</button>
+      <button class="btn-secondary" id="resetToday" style="width:100%; margin-bottom:8px">Bugünü Sıfırla</button>
+      <button class="btn-secondary" id="resetAll" style="width:100%; color:var(--danger); border-color:var(--danger)">Tüm Verileri Sil</button>
+    </div>
+  </section>
+</div>
+
+<!-- Bottom Nav -->
+<nav class="tabs">
+  <button class="tab-btn active" data-page="today">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2C9 7 6 9 6 13a6 6 0 0 0 12 0c0-4-3-6-6-11z"/></svg>
+    Bugün
+  </button>
+  <button class="tab-btn" data-page="workout">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6.5 6.5L17.5 17.5M14 4l6 6M4 14l6 6M3 21l3-3M21 3l-3 3M9 11l-4 4M15 13l-4 4"/></svg>
+    Antrenman
+  </button>
+  <button class="tab-btn" data-page="history">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
+    Geçmiş
+  </button>
+  <button class="tab-btn" data-page="settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Ayarlar
+  </button>
+</nav>
+
+<!-- API Key Modal -->
+<div class="modal-bg" id="apiModal">
+  <div class="modal">
+    <h2>Ücretsiz API Anahtarı</h2>
+    <p>Yemek analizi için Google Gemini API anahtarına ihtiyacın var. <strong>aistudio.google.com</strong> → "Get API key" butonuna tıkla → Google hesabınla giriş yap → anahtarı kopyala. Kredi kartı istemiyor, günde 1000 istek ücretsiz.</p>
+    <input type="password" id="modalApiKey" placeholder="AIza..."
+      style="width:100%; background:var(--bg-elev); border:1px solid var(--border); border-radius:10px; color:var(--text); padding:12px; font-family:inherit; font-size:14px; margin-bottom:12px">
+    <button class="btn-primary" id="modalSaveKey">Kaydet</button>
+    <button class="btn-secondary" id="modalCancel" style="width:100%; margin-top:8px">Şimdilik Atla</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   FITCOACH — Tek dosya PWA
+   ============================================================ */
+
+// ----- STORAGE HELPERS -----
+const LS = {
+  get: (k, def = null) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch { return def; } },
+  set: (k, v) => localStorage.setItem(k, JSON.stringify(v)),
+  del: (k) => localStorage.removeItem(k)
+};
+
+// ----- STATE -----
+const state = {
+  settings: LS.get('fc_settings', { calorieGoal: 2000, proteinGoal: 120, carbGoal: 220, fatGoal: 65 }),
+  apiKey: LS.get('fc_apikey', ''),
+  meals: LS.get('fc_meals_' + todayKey(), []),
+  workoutToday: LS.get('fc_workout_' + todayKey(), null),
+  history: LS.get('fc_history', [])
+};
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ----- TOAST -----
+function toast(msg, isError = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.toggle('error', isError);
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ----- TABS -----
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('page-' + btn.dataset.page).classList.add('active');
+  });
+});
+
+// ============================================================
+// AI — GEMINI 2.5 FLASH-LITE (ÜCRETSİZ KATMAN)
+// ============================================================
+
+async function callAI(systemPrompt, userPrompt) {
+  if (!state.apiKey) {
+    document.getElementById('apiModal').classList.add('show');
+    throw new Error('API anahtarı yok');
+  }
+
+  // Gemini'de "system" ayrı bir alan (systemInstruction)
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(state.apiKey)}`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      generationConfig: {
+        temperature: 0.4,
+        maxOutputTokens: 600
+      }
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    // 429 = kota dolmuş
+    if (res.status === 429) throw new Error('Günlük kota doldu, yarın tekrar dene');
+    if (res.status === 400 && err.includes('API_KEY')) throw new Error('API anahtarı geçersiz');
+    throw new Error('API hatası: ' + err.slice(0, 150));
+  }
+
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('Boş AI yanıtı');
+  return text;
+}
+
+// Yemek analizi - JSON döner
+async function analyzeMeal(mealDescription) {
+  const sys = `Sen bir Türk beslenme uzmanısın. Kullanıcının doğal Türkçe ile söylediği yemeği analiz edip kalori ve makro değerlerini tahmin edersin. SADECE şu formatta geçerli JSON dön, başka hiçbir şey yazma:
+{"name":"<kısa yemek adı>","calories":<sayı>,"protein":<gram>,"carbs":<gram>,"fat":<gram>}
+Türk mutfağına ve standart porsiyon büyüklüklerine göre tahmin et. Belirsizse makul ortalamayı al.`;
+  const txt = await callAI(sys, mealDescription);
+  // JSON'u ayıkla
+  const match = txt.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('Geçersiz AI yanıtı');
+  return JSON.parse(match[0]);
+}
+
+// Akşam önerisi
+async function getDinnerSuggestion() {
+  const consumed = sumMeals();
+  const remaining = {
+    cal: state.settings.calorieGoal - consumed.calories,
+    p: state.settings.proteinGoal - consumed.protein,
+    c: state.settings.carbGoal - consumed.carbs,
+    f: state.settings.fatGoal - consumed.fat
+  };
+  const sys = `Sen pratik bir beslenme koçusun. Türk kullanıcıya akşam yemeği önerisi yapacaksın. Kısa, somut ve evde kolay yapılabilir bir öneri ver. 2-3 cümleyi geçme. Liste kullanma, doğal cümle kur.`;
+  const usr = `Bugün şu kadar tükettim: ${consumed.calories} kcal, P:${consumed.protein}g, K:${consumed.carbs}g, Y:${consumed.fat}g.
+Kalan: ${remaining.cal} kcal, P:${remaining.p}g, K:${remaining.c}g, Y:${remaining.f}g.
+Masa başı çalışan biriyim, kahvaltı yapmıyorum. Akşam ne yemeliyim?`;
+  return await callAI(sys, usr);
+}
+
+// ============================================================
+// DETERMINISTIC WORKOUT GENERATOR
+// ============================================================
+
+// Stick-figure SVG ikonları - hareket tipini görsel olarak gösterir
+// Her biri 60x60 viewBox, currentColor ile renklenir
+const EX_ICONS = {
+  // Boyun yana eğme - kafa eğik + ok
+  neck: `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="22" cy="14" r="5"/><path d="M26 18l4 12M30 30v12M22 32h16M30 42l-6 10M30 42l6 10"/><path d="M14 14a8 4 0 0 1 8-2" stroke-dasharray="2 2"/><path d="M16 8l-2 4 4 0" /></svg>`,
+  
+  // Omuz çevirme - kollar yatay + dönme okları
+  shoulder: `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="30" cy="14" r="5"/><path d="M30 19v18M12 26h36M30 37l-6 14M30 37l6 14"/><path d="M14 22a4 4 0 0 1 0-4l3 3M46 22a4 4 0 0 0 0-4l-3 3"/></svg>`,
+  
+  // Kedi-deve - daha net dört ayak pozisyonu
+  catcow: `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="14" cy="20" r="4"/><path d="M14 24v18M14 42h2M48 24v18M48 42h-2M16 24c10-4 22-4 32 0"/><path d="M22 14c8-3 16-3 24 0M30 12l4-3M30 12l4 3" stroke-dasharray="2 2"/></svg>`,
+  
+  // Crunch - sırtüstü, dizler bükülü, kafa kalkık
+  crunch: `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="14" cy="28" r="4"/><path d="M18 30l16-2M34 28l-2-10M32 18l-4-4M34 28l8 8M42 36l8-2"/><path d="M6 50h48" stroke-dasharray="2 3"/></svg>`,
+  
+  // Bird dog - eller-dizler, çapraz kol-bacak uzatma
+  birddog: `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="22" cy="22" r="4"/><path d="M22 26v14M22 40h2M40 22v14M40 36h2M22 26c6-2 12-2 18 0M22 22l-12-6M40 26l12 8"/><path d="M6 50h48" stroke-dasharray="2 3"/></svg>`,
+  
+  // Göğüs / kol germe
+  stretch: `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="30" cy="12" r="5"/><path d="M30 17v18M30 35l-6 16M30 35l6 16"/><path d="M30 22l-16-4M30 22l16-4"/></svg>`,
+  
+  // Push-up / şınav
+  pushup: `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="48" cy="22" r="4"/><path d="M48 26l-6 6M44 32l-30 8M14 40v-6M14 40h-2M44 32l-6 8M38 40h-2"/><path d="M14 50h32" stroke-dasharray="2 3"/></svg>`,
+  
+  // Squat / çömelme
+  squat: `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="30" cy="10" r="4"/><path d="M30 14v12M30 26l-8 10M30 26l8 10M22 36l-2 14M38 36l2 14M22 50h-4M38 50h4"/><path d="M22 22l-6-2M38 22l6-2"/></svg>`,
+  
+  // Lunge / hamle
+  lunge: `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="22" cy="10" r="4"/><path d="M22 14v14M22 28l-4 8M18 36v12M14 48h8M22 28l12 12M34 40l8 8M40 48h6M16 28l-4-2M16 28l4-2"/></svg>`,
+  
+  // Plank / şınav pozisyonu sabit
+  plank: `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="22" r="4"/><path d="M14 24l40 8M14 24v6M14 30h-2M50 32v8M48 40h-2M52 40h2"/><path d="M6 50h48" stroke-dasharray="2 3"/></svg>`,
+  
+  // Glute bridge / köprü
+  bridge: `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="36" r="4"/><path d="M14 36l16-12M30 24l12 8M42 32v12M40 44h-2M44 44h2M30 24v-4"/><path d="M6 50h48" stroke-dasharray="2 3"/></svg>`,
+  
+  // Bicycle / yatarak crunch
+  crunch: `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="14" cy="22" r="4"/><path d="M18 24l8 8M26 32h12M38 32l6-10M44 22l4-6M38 32l4 8M42 40l-2 6"/><path d="M6 50h48" stroke-dasharray="2 3"/></svg>`,
+  
+  // Bird dog / dead bug (eller-dizler, kol-bacak uzatma)
+  birddog: `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="20" cy="22" r="4"/><path d="M20 26v6M20 32l16 4M36 36l12-2M48 32l4-2M20 32l-4 8M16 40v6M36 36v8M36 44h-2M38 44h2"/><path d="M6 14l8-4" stroke-dasharray="2 3"/></svg>`,
+  
+  // Twist / rotasyon
+  twist: `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="30" cy="14" r="5"/><path d="M30 19v12M14 30c8-4 24-4 32 0M30 31v8M30 39l-6 10M30 39l6 10"/><path d="M14 22a8 8 0 0 1 4-2M46 22a8 8 0 0 0-4-2" stroke-dasharray="3 3"/></svg>`,
+  
+  // Jump / zıplama
+  jump: `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="30" cy="12" r="4"/><path d="M30 16v12M22 22l-6-4M38 22l6-4M30 28l-6 12M30 28l6 12M24 40v6M36 40v6"/><path d="M16 52h8M36 52h8" stroke-dasharray="2 2"/><path d="M14 50l-4 4M46 50l4 4" stroke-dasharray="2 2"/></svg>`,
+  
+  // Wall sit / oturuş
+  wallsit: `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="14" cy="14" r="4"/><path d="M14 18v16M14 34h20M34 34v14M30 48h8M14 24h-4M14 30h-4"/><path d="M6 8v44" stroke-dasharray="3 3"/></svg>`
+};
+
+const POSTURE_EXERCISES = [
+  { name: 'Boyun eğme & uzatma', detail: '10 tekrar yavaş tempo', icon: 'neck', yt: 'boyun egzersizi masa basi' },
+  { name: 'Boyun yana eğme', detail: 'Her yöne 8 tekrar', icon: 'neck', yt: 'boyun yana egme egzersizi' },
+  { name: 'Omuz çevirme', detail: 'Geri 15, ileri 15', icon: 'shoulder', yt: 'omuz cevirme egzersizi' },
+  { name: 'Kedi-deve (cat-cow)', detail: '12 tekrar', icon: 'catcow', yt: 'cat cow stretch nasil yapilir' },
+  { name: 'Duvar göğüs açma', detail: 'Her kol 30 sn', icon: 'stretch', yt: 'duvar gogus germe egzersizi' },
+  { name: 'Çene çekme (chin tuck)', detail: '15 tekrar 3 sn tutuş', icon: 'neck', yt: 'chin tuck egzersizi' },
+  { name: 'Üst trapez germe', detail: 'Her yöne 30 sn', icon: 'neck', yt: 'trapez germe egzersizi' },
+  { name: 'Sırt orta gergisi (T-W)', detail: '12 tekrar', icon: 'shoulder', yt: 'sirt orta germe T W egzersiz' },
+  { name: 'Kalça fleksör germe', detail: 'Her bacak 30 sn', icon: 'lunge', yt: 'kalca fleksor germe' },
+  { name: 'Glute köprü', detail: '15 tekrar 2 sn tutuş', icon: 'bridge', yt: 'glute bridge nasil yapilir' }
+];
+
+const WORKOUT_POOLS = {
+  Güç: [
+    { name: 'Push-up (diz veya tam)', detail: '3 set x 10-15 tekrar', icon: 'pushup', yt: 'sinav nasil yapilir dogru form' },
+    { name: 'Squat', detail: '3 set x 15 tekrar', icon: 'squat', yt: 'squat nasil yapilir dogru form' },
+    { name: 'Lunges (her bacak)', detail: '3 set x 10 tekrar', icon: 'lunge', yt: 'lunge nasil yapilir' },
+    { name: 'Pike push-up', detail: '3 set x 8 tekrar', icon: 'pushup', yt: 'pike push up nasil yapilir' },
+    { name: 'Glute bridge', detail: '3 set x 15 tekrar', icon: 'bridge', yt: 'glute bridge nasil yapilir' },
+    { name: 'Single-leg deadlift', detail: '3 set x 8 tekrar (her bacak)', icon: 'lunge', yt: 'tek bacak deadlift' },
+    { name: 'Tricep dips (sandalye)', detail: '3 set x 10 tekrar', icon: 'pushup', yt: 'sandalye tricep dips' },
+    { name: 'Wall sit', detail: '3 set x 45 sn', icon: 'wallsit', yt: 'wall sit duvar oturus' }
+  ],
+  Core: [
+    { name: 'Plank', detail: '3 set x 45 sn', icon: 'plank', yt: 'plank nasil yapilir dogru form' },
+    { name: 'Side plank (her taraf)', detail: '3 set x 30 sn', icon: 'plank', yt: 'side plank yan plank' },
+    { name: 'Dead bug', detail: '3 set x 12 tekrar', icon: 'birddog', yt: 'dead bug egzersizi' },
+    { name: 'Bicycle crunches', detail: '3 set x 20 tekrar', icon: 'crunch', yt: 'bicycle crunch nasil yapilir' },
+    { name: 'Bird dog', detail: '3 set x 10 (her taraf)', icon: 'birddog', yt: 'bird dog egzersizi' },
+    { name: 'Russian twist', detail: '3 set x 20 tekrar', icon: 'twist', yt: 'russian twist nasil yapilir' },
+    { name: 'Hollow hold', detail: '3 set x 30 sn', icon: 'crunch', yt: 'hollow hold egzersizi' },
+    { name: 'Leg raises', detail: '3 set x 12 tekrar', icon: 'crunch', yt: 'leg raise bacak kaldirma' }
+  ],
+  HIIT: [
+    { name: 'Jumping jacks', detail: '40 sn iş / 20 sn dinlen', icon: 'jump', yt: 'jumping jacks nasil yapilir' },
+    { name: 'Mountain climbers', detail: '40 sn iş / 20 sn dinlen', icon: 'plank', yt: 'mountain climber egzersizi' },
+    { name: 'Burpees', detail: '30 sn iş / 30 sn dinlen', icon: 'jump', yt: 'burpee nasil yapilir' },
+    { name: 'High knees', detail: '40 sn iş / 20 sn dinlen', icon: 'jump', yt: 'high knees diz kaldirma' },
+    { name: 'Squat jumps', detail: '30 sn iş / 30 sn dinlen', icon: 'jump', yt: 'squat jump zipla' },
+    { name: 'Plank to push-up', detail: '40 sn iş / 20 sn dinlen', icon: 'plank', yt: 'plank to push up gecisi' },
+    { name: 'Skater jumps', detail: '40 sn iş / 20 sn dinlen', icon: 'jump', yt: 'skater jumps egzersizi' },
+    { name: 'Star jumps', detail: '30 sn iş / 30 sn dinlen', icon: 'jump', yt: 'star jump yildiz zipla' }
+  ],
+  Mobilite: [
+    { name: 'World\'s greatest stretch', detail: '5 tekrar her taraf', icon: 'lunge', yt: 'worlds greatest stretch nasil' },
+    { name: 'Down dog → cobra geçişi', detail: '10 tekrar', icon: 'catcow', yt: 'down dog cobra gecisi' },
+    { name: '90/90 kalça oturuşu', detail: '60 sn her taraf', icon: 'twist', yt: '90 90 hip stretch kalca' },
+    { name: 'Thoracic rotation', detail: '10 tekrar her taraf', icon: 'twist', yt: 'thoracic rotation egzersizi' },
+    { name: 'Pigeon pose', detail: '60 sn her taraf', icon: 'lunge', yt: 'pigeon pose guvercin pozu' },
+    { name: 'Çocuk pozu (uzun kollu)', detail: '90 sn', icon: 'catcow', yt: 'cocuk pozu yoga child pose' },
+    { name: 'Halka kol açma', detail: '10 tekrar her yön', icon: 'shoulder', yt: 'kol cevirme halka egzersiz' },
+    { name: 'Ayak bileği mobilizasyon', detail: '15 tekrar her ayak', icon: 'lunge', yt: 'ayak bilegi mobilite' }
+  ]
+};
+
+const TYPE_CYCLE = ['Güç', 'Core', 'HIIT', 'Mobilite'];
+
+function pickN(arr, n) {
+  const copy = [...arr];
+  const out = [];
+  for (let i = 0; i < n && copy.length; i++) {
+    const idx = Math.floor(Math.random() * copy.length);
+    out.push(copy.splice(idx, 1)[0]);
+  }
+  return out;
+}
+
+function generateWorkout(forceType = null) {
+  // Tip belirleme: geçmişe göre dön, ya da zorla
+  let type = forceType;
+  if (!type) {
+    const lastType = state.history[0]?.type;
+    const lastIdx = TYPE_CYCLE.indexOf(lastType);
+    type = TYPE_CYCLE[(lastIdx + 1) % TYPE_CYCLE.length];
+  }
+
+  return {
+    date: todayKey(),
+    type,
+    duration: 25,
+    posture: pickN(POSTURE_EXERCISES, 4),
+    main: pickN(WORKOUT_POOLS[type], 5),
+    completed: false
+  };
+}
+
+// ============================================================
+// WEB SPEECH API
+// ============================================================
+
+let recognition = null;
+let isRecording = false;
+
+function setupSpeech() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return false;
+  recognition = new SR();
+  recognition.lang = 'tr-TR';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    document.getElementById('mealText').value = text;
+    toast('Tanındı: ' + text.slice(0, 30) + (text.length > 30 ? '...' : ''));
+  };
+  recognition.onerror = (e) => {
+    toast('Ses hatası: ' + e.error, true);
+    stopRecording();
+  };
+  recognition.onend = stopRecording;
+  return true;
+}
+
+function startRecording() {
+  if (!recognition && !setupSpeech()) {
+    toast('Bu cihaz ses tanımayı desteklemiyor', true);
+    return;
+  }
+  try {
+    recognition.start();
+    isRecording = true;
+    document.getElementById('micBtn').classList.add('recording');
+  } catch (err) {
+    toast('Mikrofon başlatılamadı', true);
+  }
+}
+
+function stopRecording() {
+  isRecording = false;
+  document.getElementById('micBtn').classList.remove('recording');
+}
+
+document.getElementById('micBtn').addEventListener('click', () => {
+  if (isRecording) { recognition.stop(); } else { startRecording(); }
+});
+
+function speak(text) {
+  if (!('speechSynthesis' in window)) {
+    toast('Bu cihaz sesli okumayı desteklemiyor', true);
+    return;
+  }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'tr-TR';
+  u.rate = 0.95;
+  speechSynthesis.speak(u);
+}
+
+// ============================================================
+// RENDERING
+// ============================================================
+
+function sumMeals() {
+  return state.meals.reduce((acc, m) => ({
+    calories: acc.calories + (m.calories || 0),
+    protein: acc.protein + (m.protein || 0),
+    carbs: acc.carbs + (m.carbs || 0),
+    fat: acc.fat + (m.fat || 0)
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+}
+
+function renderToday() {
+  const sum = sumMeals();
+  const goal = state.settings.calorieGoal;
+  const remaining = Math.max(0, goal - sum.calories);
+  const ratio = Math.min(1, sum.calories / goal);
+
+  // Ring
+  const circ = 2 * Math.PI * 56;
+  document.getElementById('ringFg').setAttribute('stroke-dashoffset', circ * (1 - ratio));
+  document.getElementById('ringConsumed').textContent = Math.round(sum.calories);
+  document.getElementById('ringRemaining').textContent = `/ ${goal} kcal`;
+  document.getElementById('infoConsumed').textContent = Math.round(sum.calories) + ' kcal';
+  document.getElementById('infoRemaining').textContent = Math.round(remaining) + ' kcal';
+  document.getElementById('infoMeals').textContent = state.meals.length;
+
+  // Macros
+  document.getElementById('macroP').innerHTML = Math.round(sum.protein) + '<span class="macro-unit">g</span>';
+  document.getElementById('macroC').innerHTML = Math.round(sum.carbs) + '<span class="macro-unit">g</span>';
+  document.getElementById('macroF').innerHTML = Math.round(sum.fat) + '<span class="macro-unit">g</span>';
+
+  // Meal list
+  const list = document.getElementById('mealList');
+  if (state.meals.length === 0) {
+    list.innerHTML = '<div class="empty">Henüz öğün eklenmedi.</div>';
+  } else {
+    list.innerHTML = state.meals.map((m, i) => `
+      <div class="meal-item">
+        <div style="flex:1">
+          <div class="meal-name">${escapeHtml(m.name)}</div>
+          <div class="meal-time">${m.time} • P${Math.round(m.protein)} K${Math.round(m.carbs)} Y${Math.round(m.fat)}</div>
+        </div>
+        <div class="meal-cal">${Math.round(m.calories)} kcal</div>
+        <button class="meal-del" data-idx="${i}" aria-label="Sil">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+        </button>
+      </div>
+    `).join('');
+    list.querySelectorAll('.meal-del').forEach(b => {
+      b.addEventListener('click', () => {
+        state.meals.splice(parseInt(b.dataset.idx), 1);
+        LS.set('fc_meals_' + todayKey(), state.meals);
+        renderToday();
+      });
+    });
+  }
+
+  // Suggestion card visibility
+  document.getElementById('suggestCard').style.display = state.meals.length > 0 ? 'block' : 'none';
+}
+
+function renderWorkout() {
+  // Eski sürümden kalan kayıtta icon/yt alanı yoksa yeni program üret
+  const isStale = state.workoutToday && (!state.workoutToday.posture?.[0]?.icon || !state.workoutToday.main?.[0]?.icon);
+  if (!state.workoutToday || isStale) {
+    state.workoutToday = generateWorkout();
+    LS.set('fc_workout_' + todayKey(), state.workoutToday);
+  }
+  const w = state.workoutToday;
+  document.getElementById('wType').textContent = w.type;
+  document.getElementById('wDuration').textContent = w.duration + ' dk';
+
+  const renderEx = (list, prefix) => list.map((ex, i) => {
+    const iconSvg = EX_ICONS[ex.icon] || EX_ICONS.stretch;
+    const ytQuery = encodeURIComponent(ex.yt || ex.name);
+    return `
+    <div class="exercise">
+      <div class="ex-icon">${iconSvg}</div>
+      <div class="ex-body">
+        <div class="ex-name">
+          <span class="ex-num-inline">${String(i + 1).padStart(2, '0')}</span>
+          ${escapeHtml(ex.name)}
+        </div>
+        <div class="ex-detail">${escapeHtml(ex.detail)}</div>
+      </div>
+      <a class="ex-yt" href="https://www.youtube.com/results?search_query=${ytQuery}" target="_blank" rel="noopener" aria-label="YouTube'da göster" title="YouTube'da göster">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="10 8 16 12 10 16 10 8"/><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.56 49.56 0 0 1-16.2 0A2 2 0 0 1 2.5 17"/></svg>
+      </a>
+      <button class="ex-check ${ex.done ? 'done' : ''}" data-prefix="${prefix}" data-idx="${i}" aria-label="Tamamla"></button>
+    </div>`;
+  }).join('');
+
+  document.getElementById('postureList').innerHTML = renderEx(w.posture, 'posture');
+  document.getElementById('mainList').innerHTML = renderEx(w.main, 'main');
+
+  document.querySelectorAll('.ex-check').forEach(b => {
+    b.addEventListener('click', () => {
+      const arr = state.workoutToday[b.dataset.prefix];
+      const idx = parseInt(b.dataset.idx);
+      arr[idx].done = !arr[idx].done;
+      LS.set('fc_workout_' + todayKey(), state.workoutToday);
+      b.classList.toggle('done', arr[idx].done);
+    });
+  });
+}
+
+function renderHistory() {
+  const total = state.history.length;
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const week = state.history.filter(h => new Date(h.date).getTime() > weekAgo).length;
+
+  // Streak
+  let streak = 0;
+  const dates = new Set(state.history.map(h => h.date));
+  let d = new Date();
+  while (dates.has(formatDate(d))) {
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+
+  // Avg calories - son 7 gün
+  let totCal = 0, days = 0;
+  for (let i = 0; i < 7; i++) {
+    const dt = new Date();
+    dt.setDate(dt.getDate() - i);
+    const m = LS.get('fc_meals_' + formatDate(dt), []);
+    if (m.length) {
+      totCal += m.reduce((s, x) => s + (x.calories || 0), 0);
+      days++;
+    }
+  }
+  const avgCal = days ? Math.round(totCal / days) : 0;
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statWeek').textContent = week;
+  document.getElementById('statStreak').textContent = streak;
+  document.getElementById('statAvgCal').textContent = avgCal;
+
+  const list = document.getElementById('historyList');
+  if (state.history.length === 0) {
+    list.innerHTML = '<div class="empty">Henüz kayıt yok. İlk antrenmanını tamamla!</div>';
+  } else {
+    list.innerHTML = state.history.slice(0, 20).map(h => `
+      <div class="history-item">
+        <span><strong>${h.type}</strong> · ${h.duration} dk</span>
+        <span class="hist-date">${h.date}</span>
+      </div>
+    `).join('');
+  }
+}
+
+function formatDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+// ============================================================
+// EVENT HANDLERS
+// ============================================================
+
+document.getElementById('analyzeMeal').addEventListener('click', async () => {
+  const text = document.getElementById('mealText').value.trim();
+  if (!text) { toast('Önce yemeği yaz', true); return; }
+  const btn = document.getElementById('analyzeMeal');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Analiz ediliyor...';
+  try {
+    const result = await analyzeMeal(text);
+    const meal = {
+      ...result,
+      time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+      raw: text
+    };
+    state.meals.push(meal);
+    LS.set('fc_meals_' + todayKey(), state.meals);
+    document.getElementById('mealText').value = '';
+    renderToday();
+    toast(`Eklendi: ${meal.name} — ${Math.round(meal.calories)} kcal`);
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Analiz Et & Ekle';
+  }
+});
+
+document.getElementById('getSuggestion').addEventListener('click', async () => {
+  const btn = document.getElementById('getSuggestion');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Düşünüyor...';
+  try {
+    const txt = await getDinnerSuggestion();
+    document.getElementById('suggestText').textContent = txt;
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Öneri Al';
+  }
+});
+
+document.getElementById('completeWorkout').addEventListener('click', () => {
+  const w = state.workoutToday;
+  if (!w) return;
+  const allDone = [...w.posture, ...w.main].every(e => e.done);
+  if (!allDone && !confirm('Bazı egzersizler işaretli değil. Yine de tamamla?')) return;
+
+  // Geçmişe ekle (aynı gün ekleme)
+  state.history = state.history.filter(h => h.date !== w.date);
+  state.history.unshift({ date: w.date, type: w.type, duration: w.duration });
+  LS.set('fc_history', state.history);
+  toast('Antrenman tamamlandı!');
+  renderHistory();
+});
+
+document.getElementById('regenWorkout').addEventListener('click', () => {
+  if (!confirm('Yeni program üretilsin mi? Mevcut ilerleme silinir.')) return;
+  state.workoutToday = generateWorkout();
+  LS.set('fc_workout_' + todayKey(), state.workoutToday);
+  renderWorkout();
+});
+
+document.getElementById('speakWorkout').addEventListener('click', () => {
+  const w = state.workoutToday;
+  if (!w) return;
+  let text = `Bugünkü antrenmanın ${w.type}, ${w.duration} dakika. Önce postür egzersizleri: `;
+  w.posture.forEach((e, i) => text += `${i+1}. ${e.name}, ${e.detail}. `);
+  text += 'Şimdi ana antrenman: ';
+  w.main.forEach((e, i) => text += `${i+1}. ${e.name}, ${e.detail}. `);
+  speak(text);
+});
+
+// Settings
+function loadSettingsForm() {
+  document.getElementById('setCal').value = state.settings.calorieGoal;
+  document.getElementById('setP').value = state.settings.proteinGoal;
+  document.getElementById('setC').value = state.settings.carbGoal;
+  document.getElementById('setF').value = state.settings.fatGoal;
+  document.getElementById('setApiKey').value = state.apiKey;
+}
+
+document.getElementById('saveSettings').addEventListener('click', () => {
+  state.settings = {
+    calorieGoal: parseInt(document.getElementById('setCal').value) || 2000,
+    proteinGoal: parseInt(document.getElementById('setP').value) || 120,
+    carbGoal: parseInt(document.getElementById('setC').value) || 220,
+    fatGoal: parseInt(document.getElementById('setF').value) || 65
+  };
+  LS.set('fc_settings', state.settings);
+  renderToday();
+  toast('Ayarlar kaydedildi');
+});
+
+document.getElementById('saveApi').addEventListener('click', () => {
+  const key = document.getElementById('setApiKey').value.trim();
+  if (!key.startsWith('AIza') || key.length < 30) { toast('Geçersiz anahtar formatı', true); return; }
+  state.apiKey = key;
+  LS.set('fc_apikey', key);
+  toast('API anahtarı kaydedildi');
+});
+
+document.getElementById('testApi').addEventListener('click', async () => {
+  const btn = document.getElementById('testApi');
+  btn.disabled = true; btn.textContent = 'Test ediliyor...';
+  try {
+    await callAI('Sadece "OK" yaz.', 'test');
+    toast('Bağlantı başarılı');
+  } catch (err) {
+    toast('Hata: ' + err.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Test Et';
+  }
+});
+
+document.getElementById('exportData').addEventListener('click', () => {
+  const data = {
+    settings: state.settings,
+    history: state.history,
+    todayMeals: state.meals,
+    todayWorkout: state.workoutToday,
+    exportDate: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `fitcoach_${todayKey()}.json`;
+  a.click();
+});
+
+document.getElementById('resetToday').addEventListener('click', () => {
+  if (!confirm('Bugünkü öğün ve antrenman silinsin mi?')) return;
+  state.meals = []; state.workoutToday = null;
+  LS.del('fc_meals_' + todayKey());
+  LS.del('fc_workout_' + todayKey());
+  renderToday(); renderWorkout();
+  toast('Bugün sıfırlandı');
+});
+
+document.getElementById('resetAll').addEventListener('click', () => {
+  if (!confirm('TÜM veriler silinecek. Emin misin?')) return;
+  if (!confirm('Son uyarı: geri dönüş yok!')) return;
+  Object.keys(localStorage).filter(k => k.startsWith('fc_')).forEach(k => localStorage.removeItem(k));
+  location.reload();
+});
+
+// API Modal
+document.getElementById('modalSaveKey').addEventListener('click', () => {
+  const key = document.getElementById('modalApiKey').value.trim();
+  if (!key.startsWith('AIza') || key.length < 30) { toast('Geçersiz format (AIza ile başlamalı)', true); return; }
+  state.apiKey = key;
+  LS.set('fc_apikey', key);
+  document.getElementById('apiModal').classList.remove('show');
+  toast('Kaydedildi, tekrar dene');
+});
+document.getElementById('modalCancel').addEventListener('click', () => {
+  document.getElementById('apiModal').classList.remove('show');
+});
+
+// ============================================================
+// INIT
+// ============================================================
+
+function init() {
+  // Tarih badge
+  const months = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+  const days = ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
+  const d = new Date();
+  document.getElementById('dateBadge').textContent = `${days[d.getDay()]} · ${d.getDate()} ${months[d.getMonth()]}`;
+
+  loadSettingsForm();
+  renderToday();
+  renderWorkout();
+  renderHistory();
+  setupSpeech();
+
+  // İlk açılışta API key yoksa modal göster
+  if (!state.apiKey) {
+    setTimeout(() => document.getElementById('apiModal').classList.add('show'), 800);
+  }
+
+  // Service worker (PWA)
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+      const CACHE = 'fitcoach-v1';
+      self.addEventListener('install', e => self.skipWaiting());
+      self.addEventListener('activate', e => self.clients.claim());
+      self.addEventListener('fetch', e => {
+        if (e.request.url.includes('generativelanguage.googleapis.com')) return;
+        e.respondWith(
+          caches.match(e.request).then(r => r || fetch(e.request).then(resp => {
+            return caches.open(CACHE).then(c => { c.put(e.request, resp.clone()); return resp; });
+          }).catch(() => caches.match('/')))
+        );
+      });
+    `;
+    const blob = new Blob([swCode], { type: 'application/javascript' });
+    navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+  }
+}
+
+init();
+</script>
+</body>
+</html>
